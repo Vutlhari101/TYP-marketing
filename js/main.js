@@ -128,6 +128,7 @@
       var on = t === tab;
       t.classList.toggle('is-active', on);
       t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
       var pane = document.getElementById(t.getAttribute('aria-controls'));
       if (!pane) return;
       pane.classList.toggle('is-active', on);
@@ -136,6 +137,7 @@
   }
 
   tabs.forEach(function (tab, i) {
+    tab.tabIndex = i === 0 ? 0 : -1;
     tab.addEventListener('click', function () { selectTab(tab); });
 
     // Arrow keys move between tabs, which is what a tablist is expected to do
@@ -143,6 +145,8 @@
       var next = null;
       if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
       if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
+      if (e.key === 'Home') next = tabs[0];
+      if (e.key === 'End') next = tabs[tabs.length - 1];
       if (!next) return;
       e.preventDefault();
       selectTab(next);
@@ -170,12 +174,23 @@
     if (!lb) return;
     lb.setAttribute('hidden', '');
     document.body.style.overflow = '';
-    if (lbImg) lbImg.src = '';
+    if (lbImg) lbImg.removeAttribute('src');
     if (lastFocus) lastFocus.focus();
   }
 
-  document.querySelectorAll('[data-zoom] img').forEach(function (img) {
-    img.addEventListener('click', function () { openLightbox(img); });
+  document.querySelectorAll('[data-zoom]').forEach(function (figure) {
+    var img = figure.querySelector('img');
+    if (!img) return;
+    figure.tabIndex = 0;
+    figure.setAttribute('role', 'button');
+    figure.setAttribute('aria-label', 'Enlarge screenshot: ' + img.alt);
+    figure.addEventListener('click', function () { openLightbox(img); });
+    figure.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openLightbox(img);
+      }
+    });
   });
 
   if (lbClose) lbClose.addEventListener('click', closeLightbox);
@@ -185,7 +200,15 @@
     });
   }
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && lb && !lb.hasAttribute('hidden')) closeLightbox();
+    if (lb && !lb.hasAttribute('hidden')) {
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'Tab') { e.preventDefault(); lbClose.focus(); }
+    }
+    if (e.key === 'Escape' && nav && nav.classList.contains('is-open')) {
+      nav.classList.remove('is-open');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.focus();
+    }
   });
 
   // smooth anchors, header-aware
